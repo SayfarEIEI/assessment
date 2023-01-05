@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -8,17 +9,57 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/lib/pq"
+	_ "github.com/lib/pq"
 )
 
+type Expenses struct {
+	Id     int      `json:"id"`
+	Title  string   `json:"title"`
+	Amount int      `json:"amount"`
+	Note   string   `json:"note"`
+	Tags   []string `json:"tags"`
+}
+
+var expense Expenses
+
 func main() {
+	createTable()
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-
-	e.GET("/TestAPIsGO", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, "TestAPIsGO")
+	db, errDb := sql.Open("postgres", os.Getenv("DB_URL"))
+	e.POST("/expenses", func(c echo.Context) error {
+		err := c.Bind(&expense)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, err)
+		}
+		if errDb != nil {
+			return c.JSON(http.StatusBadRequest, errDb)
+		}
+		row := db.QueryRow("INSERT INTO expenses (title,amount,note,tags) values ($1,$2,$3,$4) RETURNING id ", expense.Title, expense.Amount, expense.Note, pq.Array(expense.Tags))
+		var id int
+		err = row.Scan(&id)
+		if err != nil {
+			log.Fatal("can't insert data", err)
+		}
+		expense.Id = id
+		return c.JSON(http.StatusAccepted, expense)
 	})
+	// e.GET("/expenses", func(c echo.Context) error {
+	// 	return c.JSON(http.StatusOK, expense)
+	// })
 	fmt.Println("Please use server.go for main file")
 	fmt.Println("start at port:", os.Getenv("PORT"))
 	log.Fatal(e.Start(os.Getenv("PORT")))
+}
+
+func createTable() error {
+	db, err := sql.Open("postgres", os.Getenv("DB_URL"))
+	_, err = db.Exec("CREATE TABLE IF NOT EXISTS expenses ( id SERIAL PRIMARY KEY, title TEXT, amount FLOAT, note TEXT, tags TEXT[] );")
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	return nil
 }

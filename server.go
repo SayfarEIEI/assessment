@@ -62,6 +62,23 @@ func main() {
 		}
 		return c.JSON(http.StatusOK, expense)
 	})
+	e.PUT("/expenses/:id", func(c echo.Context) error {
+		id := c.Param("id")
+		err := c.Bind(&expense)
+		data, errData := db.Prepare("UPDATE expenses SET title = $2,amount=$3,note=$4,tags=$5 WHERE id=$1;")
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, err)
+		}
+		if errData != nil {
+			return c.JSON(http.StatusBadRequest, err)
+		}
+		if _, err := data.Exec(id, expense.Title, expense.Amount, expense.Note, pq.Array(&expense.Tags)); err != nil {
+			log.Fatal("error execute update ", err)
+			return c.JSON(http.StatusBadRequest, err)
+		}
+		return c.JSON(http.StatusOK, expense)
+	})
+
 	fmt.Println("Please use server.go for main file")
 	fmt.Println("start at port:", os.Getenv("PORT"))
 	log.Fatal(e.Start(os.Getenv("PORT")))

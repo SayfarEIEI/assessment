@@ -41,14 +41,27 @@ func main() {
 		var id int
 		err = row.Scan(&id)
 		if err != nil {
-			log.Fatal("can't insert data", err)
+			return c.JSON(http.StatusBadRequest, err)
 		}
 		expense.Id = id
 		return c.JSON(http.StatusAccepted, expense)
 	})
-	// e.GET("/expenses", func(c echo.Context) error {
-	// 	return c.JSON(http.StatusOK, expense)
-	// })
+	e.GET("/expenses/:id", func(c echo.Context) error {
+		id := c.Param("id")
+		data, errData := db.Prepare("SELECT id,title,amount,note,tags FROM expenses where id=$1")
+		if errDb != nil {
+			return c.JSON(http.StatusBadRequest, errDb)
+		}
+		if errData != nil {
+			return c.JSON(http.StatusBadRequest, errData)
+		}
+		row := data.QueryRow(id)
+		err := row.Scan(&expense.Id, &expense.Title, &expense.Amount, &expense.Note, pq.Array(&expense.Tags))
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, err)
+		}
+		return c.JSON(http.StatusOK, expense)
+	})
 	fmt.Println("Please use server.go for main file")
 	fmt.Println("start at port:", os.Getenv("PORT"))
 	log.Fatal(e.Start(os.Getenv("PORT")))

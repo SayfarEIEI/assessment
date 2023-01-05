@@ -29,6 +29,12 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	db, errDb := sql.Open("postgres", os.Getenv("DB_URL"))
+	e.Use(middleware.BasicAuth(func(userName, password string, ctx echo.Context) (bool, error) {
+		if userName == "Sayfar" && password == "1234" {
+			return true, nil
+		}
+		return false, nil
+	}))
 	e.GET("/expenses", func(c echo.Context) error {
 		var expenses []Expenses
 		data, errData := db.Prepare("SELECT id,title,amount,note,tags FROM expenses")

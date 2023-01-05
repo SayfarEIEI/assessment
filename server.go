@@ -29,6 +29,26 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	db, errDb := sql.Open("postgres", os.Getenv("DB_URL"))
+	e.GET("/expenses", func(c echo.Context) error {
+		var expenses []Expenses
+		data, errData := db.Prepare("SELECT id,title,amount,note,tags FROM expenses")
+		if errData != nil {
+			return c.JSON(http.StatusBadRequest, errData)
+		}
+		row, err := data.Query()
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, "can't query all")
+		}
+		for row.Next() {
+			err := row.Scan(&expense.Id, &expense.Title, &expense.Amount, &expense.Note, pq.Array(&expense.Tags))
+			if err != nil {
+				return c.JSON(http.StatusBadRequest, err)
+			}
+			expenses = append(expenses, expense)
+		}
+		return c.JSON(http.StatusOK, expenses)
+	})
+
 	e.POST("/expenses", func(c echo.Context) error {
 		err := c.Bind(&expense)
 		if err != nil {

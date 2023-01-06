@@ -29,9 +29,7 @@ func TestCreateData(t *testing.T) {
 	}`)
 	res := request(http.MethodPost, uri("expenses"), body)
 	err := res.Decode(&expense)
-	if err != nil {
-		t.Fatal("can't create expense")
-	}
+
 	assert.Nil(t, err)
 	assert.EqualValues(t, http.StatusAccepted, res.StatusCode)
 	assert.NotEqual(t, 0, expense.Id)
